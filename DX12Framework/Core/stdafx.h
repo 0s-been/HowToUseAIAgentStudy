@@ -22,6 +22,7 @@
 #include <cstring>	// std::memcpy
 #include <cstdio>	// swprintf_s, _vsnwprintf_s
 #include <climits>	// UINT_MAX
+#include <algorithm>	// std::clamp
 #include <string>
 #include <vector>
 #include <memory>

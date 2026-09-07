@@ -144,6 +144,12 @@ LRESULT CALLBACK Window::WndProcStatic(HWND hWnd, UINT message, WPARAM wParam, L
 
 LRESULT Window::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	// 창 자신의 처리보다 먼저 넘긴다. 입력 상태가 한 프레임 늦게 반영되는 일이 없다.
+	if (m_onMessage)
+	{
+		m_onMessage(message, wParam, lParam);
+	}
+
 	switch (message)
 	{
 		case WM_ACTIVATE:
@@ -221,16 +227,13 @@ LRESULT Window::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			return 0;
 
 		case WM_KEYDOWN:
+			// 창을 닫는 것은 창의 책임이다. 나머지 키는 InputReader가 받아 처리한다.
 			if (wParam == VK_ESCAPE)
 			{
 				::PostQuitMessage(0);
 				return 0;
 			}
-			if (m_onKeyDown)
-			{
-				m_onKeyDown(wParam);
-			}
-			return 0;
+			break;
 
 		case WM_MENUCHAR:
 			// Alt + Enter 등에서 나는 비프음을 막는다.

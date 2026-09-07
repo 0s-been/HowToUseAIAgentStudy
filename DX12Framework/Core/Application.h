@@ -2,7 +2,7 @@
 // 프로그램 전체의 수명주기(Initialize -> Run -> Shutdown)와 메인 루프를 담당한다.
 // 창(Window)과 렌더러(Renderer)를 소유하고 둘을 이어 준다.
 //
-// 5단계 데모: 회전하는 큐브 하나를 그린다.
+// 데모: 회전하는 큐브 하나를 그리고, WASD + 우클릭 드래그로 카메라를 움직인다.
 // 실제 게임/툴을 만들 때는 이 클래스가 씬이나 오브젝트 목록을 들고 있게 확장하면 된다.
 
 #pragma once
@@ -12,6 +12,7 @@
 #include "../Graphics/Camera.h"
 #include "../Graphics/Mesh.h"
 #include "../Graphics/Renderer.h"
+#include "../Input/InputReader.h"
 
 class Application
 {
@@ -29,14 +30,15 @@ public:
 private:
 	bool LoadResources();
 	void Update(float deltaTime);
+	void UpdateCamera(float deltaTime);
 	void Render();
 	void OnResize(UINT width, UINT height);
-	void OnKeyDown(WPARAM key);
 	void UpdateWindowTitle();
 
 	HINSTANCE m_hInstance = nullptr;
 	std::unique_ptr<Window> m_window;
 	std::unique_ptr<Renderer> m_renderer;
+	std::unique_ptr<InputReader> m_input;
 	Timer m_timer;
 
 	Camera m_camera;
@@ -46,6 +48,12 @@ private:
 	float m_rotationY = 0.0f;
 	float m_rotationX = 0.0f;
 	bool m_rotationPaused = false;
+
+	// 카메라 이동 속도(초당 단위 거리)와 Shift를 눌렀을 때의 배율.
+	float m_cameraSpeed = 5.0f;
+	float m_cameraBoostMultiplier = 3.0f;
+	// 마우스 1픽셀당 회전 각도. 값이 클수록 시야가 빨리 돈다.
+	float m_mouseSensitivity = DirectX::XMConvertToRadians(0.25f);
 
 	std::wstring m_baseTitle;
 	float m_titleUpdateTimer = 0.0f;

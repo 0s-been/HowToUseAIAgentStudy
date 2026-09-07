@@ -4,6 +4,9 @@
     <Filter Include="Core">
       <UniqueIdentifier>{3a1c9f40-2d6b-4c18-9f7e-51b0c2a7d3e1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Input">
+      <UniqueIdentifier>{2c6f18ba-84d7-4e05-9b31-7a0e5c93df46}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Shaders">
       <UniqueIdentifier>{b5e07c92-3f14-4d68-a27b-6d90f1c4a8e3}</UniqueIdentifier>
     </Filter>
@@ -14,6 +17,9 @@
   <ItemGroup>
     <ClInclude Include="Core\stdafx.h">
       <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\InputReader.h">
+      <Filter>Input</Filter>
     </ClInclude>
     <ClInclude Include="Core\Application.h">
       <Filter>Core</Filter>
@@ -124,6 +130,9 @@
     </ClCompile>
     <ClCompile Include="Graphics\GeometryFactory.cpp">
       <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Input\InputReader.cpp">
+      <Filter>Input</Filter>
     </ClCompile>
     <ClCompile Include="Main.cpp" />
   </ItemGroup>

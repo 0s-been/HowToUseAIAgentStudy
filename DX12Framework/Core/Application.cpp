@@ -23,12 +23,23 @@ bool Application::Initialize(const std::wstring& title, UINT width, UINT height)
 
 	// 창이 D3D를 직접 알지 못하도록, 크기 변경은 콜백으로만 받는다.
 	m_window->SetResizeCallback([this](UINT w, UINT h) { OnResize(w, h); });
-	m_window->SetKeyDownCallback([this](WPARAM key) { OnKeyDown(key); });
 
 	if (!m_window->Create())
 	{
 		return false;
 	}
+
+	// 창이 받은 원시 메시지를 입력 리더로 흘려보낸다.
+	// Window는 입력의 의미를 모르고, InputReader는 창 생성을 모른다.
+	m_input = std::make_unique<InputReader>();
+	m_input->Initialize(m_window->GetHandle());
+	m_window->SetMessageCallback([this](UINT message, WPARAM wParam, LPARAM lParam)
+	{
+		if (m_input != nullptr)
+		{
+			m_input->ProcessMessage(message, wParam, lParam);
+		}
+	});
 
 	// 디버그 레이어는 디버그 빌드에서만 켠다. 릴리스에서는 비용이 크다.
 #if defined(_DEBUG)
@@ -53,8 +64,7 @@ bool Application::Initialize(const std::wstring& title, UINT width, UINT height)
 	m_camera.SetLens(XMConvertToRadians(60.0f), m_renderer->GetAspectRatio(), 0.1f, 500.0f);
 	m_camera.LookAt(
 		XMFLOAT3(2.5f, 2.0f, -4.0f),	// 위치
-		XMFLOAT3(0.0f, 0.0f, 0.0f),		// 바라보는 지점
-		XMFLOAT3(0.0f, 1.0f, 0.0f));	// 위쪽
+		XMFLOAT3(0.0f, 0.0f, 0.0f));	// 바라보는 지점
 
 	m_renderer->SetDirectionalLight(
 		XMFLOAT3(0.5f, -1.0f, 0.75f),		// 빛이 나아가는 방향
@@ -64,7 +74,8 @@ bool Application::Initialize(const std::wstring& title, UINT width, UINT height)
 	m_timer.Reset();
 	m_initialized = true;
 
-	LOG_INFO(L"애플리케이션 초기화 완료 (V: 수직동기화, Space: 회전 정지, ESC: 종료)");
+	LOG_INFO(L"애플리케이션 초기화 완료");
+	LOG_INFO(L"조작: WASD 이동 / QE 상하 / Shift 가속 / 우클릭 드래그 시야 / Space 회전정지 / V 수직동기화 / ESC 종료");
 	return true;
 }
 
@@ -88,8 +99,18 @@ int Application::Run()
 
 	m_timer.Reset();
 
-	while (m_window->ProcessMessages())
+	while (true)
 	{
+		// 메시지 펌프보다 '먼저' 호출해야 한다.
+		// 여기서 지난 프레임 상태를 보관하고 마우스 이동량을 0으로 되돌린 뒤,
+		// 이어지는 ProcessMessages가 이번 프레임의 입력을 채운다.
+		m_input->BeginFrame();
+
+		if (!m_window->ProcessMessages())
+		{
+			break;
+		}
+
 		m_timer.Tick();
 
 		// 최소화되었거나 비활성 상태면 그리지 않고 CPU를 양보한다.
@@ -117,12 +138,35 @@ void Application::Shutdown()
 		m_renderer.reset();
 	}
 
+	// 순서가 중요하다. Window를 파괴하면 DestroyWindow가 WM_DESTROY를 보내고,
+	// 그 메시지가 콜백을 타고 이미 해제된 m_input에 닿으면 크래시가 난다.
+	// 콜백부터 끊고 창을 먼저 정리한다.
+	if (m_window != nullptr)
+	{
+		m_window->SetMessageCallback(nullptr);
+	}
 	m_window.reset();
+	m_input.reset();
 	m_initialized = false;
 }
 
 void Application::Update(float deltaTime)
 {
+	// 토글류는 '눌린 그 프레임'에만 반응해야 한다.
+	// IsKeyDown으로 처리하면 키를 누르고 있는 동안 매 프레임 뒤집힌다.
+	if (m_input->WasKeyPressed('V'))
+	{
+		m_vsync = !m_vsync;
+		LOG_INFO(L"수직 동기화: %s", m_vsync ? L"켜짐" : L"꺼짐");
+	}
+	if (m_input->WasKeyPressed(VK_SPACE))
+	{
+		m_rotationPaused = !m_rotationPaused;
+		LOG_INFO(L"큐브 회전: %s", m_rotationPaused ? L"정지" : L"재개");
+	}
+
+	UpdateCamera(deltaTime);
+
 	if (m_rotationPaused)
 	{
 		return;
@@ -164,23 +208,46 @@ void Application::OnResize(UINT width, UINT height)
 	}
 }
 
-void Application::OnKeyDown(WPARAM key)
+void Application::UpdateCamera(float deltaTime)
 {
-	switch (key)
+	// 마우스 오른쪽 버튼을 누르고 있는 동안에만 시야가 돈다.
+	// 버튼을 떼면 커서로 다른 작업을 할 수 있어야 하기 때문이다.
+	if (m_input->IsMouseDown(MouseButton::Right))
 	{
-		case 'V':
-			m_vsync = !m_vsync;
-			LOG_INFO(L"수직 동기화: %s", m_vsync ? L"켜짐" : L"꺼짐");
-			break;
+		// 회전량은 마우스가 움직인 '픽셀 수'에 비례한다.
+		// 여기에 deltaTime을 곱하면 안 된다. 이동량 자체가 이미 이번 프레임의 값이라
+		// 곱하는 순간 프레임률에 따라 감도가 달라진다.
+		const float deltaX = m_input->GetMouseDeltaX();
+		const float deltaY = m_input->GetMouseDeltaY();
 
-		case VK_SPACE:
-			m_rotationPaused = !m_rotationPaused;
-			LOG_INFO(L"회전: %s", m_rotationPaused ? L"정지" : L"재개");
-			break;
-
-		default:
-			break;
+		if (deltaX != 0.0f)
+		{
+			m_camera.AddYaw(deltaX * m_mouseSensitivity);
+		}
+		if (deltaY != 0.0f)
+		{
+			// 마우스를 아래로 끌면 아래를 본다.
+			m_camera.AddPitch(deltaY * m_mouseSensitivity);
+		}
 	}
+
+	// 반대로 이동은 '시간'에 비례해야 프레임률과 무관하게 같은 속도가 된다.
+	float speed = m_cameraSpeed;
+	if (m_input->IsKeyDown(VK_SHIFT))
+	{
+		speed *= m_cameraBoostMultiplier;
+	}
+	const float distance = speed * deltaTime;
+
+	if (m_input->IsKeyDown('W')) { m_camera.Walk(distance); }
+	if (m_input->IsKeyDown('S')) { m_camera.Walk(-distance); }
+	if (m_input->IsKeyDown('D')) { m_camera.Strafe(distance); }
+	if (m_input->IsKeyDown('A')) { m_camera.Strafe(-distance); }
+	if (m_input->IsKeyDown('E')) { m_camera.Fly(distance); }
+	if (m_input->IsKeyDown('Q')) { m_camera.Fly(-distance); }
+
+	// 이동/회전으로 더러워진 뷰 행렬을 여기서 한 번만 다시 만든다.
+	m_camera.UpdateViewMatrix();
 }
 
 void Application::UpdateWindowTitle()

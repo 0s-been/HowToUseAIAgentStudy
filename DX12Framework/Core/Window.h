@@ -10,7 +10,9 @@ class Window
 {
 public:
 	using ResizeCallback = std::function<void(UINT width, UINT height)>;
-	using KeyCallback = std::function<void(WPARAM key)>;
+	// 창 프로시저가 받은 원시 메시지를 그대로 넘겨주는 콜백.
+	// 입력 처리를 Window 밖(InputReader)에 두기 위한 통로다.
+	using MessageCallback = std::function<void(UINT message, WPARAM wParam, LPARAM lParam)>;
 
 	Window(HINSTANCE hInstance, const std::wstring& title, UINT width, UINT height);
 	~Window();
@@ -36,7 +38,9 @@ public:
 
 	// 실제로 크기가 확정된 시점(드래그 종료/최대화/복원)에만 호출된다.
 	void SetResizeCallback(ResizeCallback callback) { m_onResize = std::move(callback); }
-	void SetKeyDownCallback(KeyCallback callback) { m_onKeyDown = std::move(callback); }
+
+	// 모든 메시지가 그대로 전달된다. 받는 쪽에서 필요한 것만 골라 쓴다.
+	void SetMessageCallback(MessageCallback callback) { m_onMessage = std::move(callback); }
 
 private:
 	static LRESULT CALLBACK WndProcStatic(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -56,7 +60,7 @@ private:
 	bool m_paused = false;
 
 	ResizeCallback m_onResize;
-	KeyCallback m_onKeyDown;
+	MessageCallback m_onMessage;
 
 	static const wchar_t* kClassName;
 };

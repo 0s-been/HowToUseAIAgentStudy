@@ -21,8 +21,12 @@ DirectX 12 기본 프레임워크. 같은 솔루션의 `DirectXProj`(DirectX 11)
 
 ### 조작
 
-| 키 | 동작 |
+| 입력 | 동작 |
 |---|---|
+| `W` `A` `S` `D` | 앞 / 왼쪽 / 뒤 / 오른쪽 이동 |
+| `Q` `E` | 아래 / 위로 이동 |
+| `Shift` (누른 채) | 이동 속도 3배 |
+| **마우스 우클릭 + 드래그** | 카메라 시야 회전 (드래그 중 커서 숨김) |
 | `Space` | 큐브 회전 정지 / 재개 |
 | `V` | 수직 동기화 토글 |
 | `ESC` | 종료 |
@@ -48,8 +52,10 @@ DX12Framework/
 │   ├── DXException.h/.cpp    HRESULT 실패 -> 예외 (ThrowIfFailed)
 │   ├── Logger.h/.cpp         출력창 + 콘솔 + 파일 3중 로거
 │   ├── Timer.h/.cpp          QPC 기반 델타/누적 시간, FPS
-│   ├── Window.h/.cpp         Win32 창과 메시지 펌프 (D3D를 전혀 모른다)
+│   ├── Window.h/.cpp         Win32 창과 메시지 펌프 (D3D도 입력도 모른다)
 │   └── Application.h/.cpp    수명주기와 메인 루프
+├── Input/
+│   └── InputReader.h/.cpp    키보드/마우스 상태 수집, 프레임 단위 질의
 ├── Graphics/                 렌더링
 │   ├── D3D12Device.h/.cpp    디버그 레이어, 어댑터 선택, 디바이스 생성
 │   ├── CommandQueue.h/.cpp   커맨드 큐 + 펜스 동기화
@@ -64,7 +70,7 @@ DX12Framework/
 │   ├── ConstantBuffers.h     상수 버퍼 구조체 (HLSL과 짝을 이룸)
 │   ├── Mesh.h/.cpp           디폴트 힙 정점/인덱스 버퍼
 │   ├── GeometryFactory.h/.cpp 큐브 지오메트리 생성
-│   ├── Camera.h/.cpp         뷰/투영 행렬
+│   ├── Camera.h/.cpp         1인칭 카메라 (yaw/pitch, 이동/회전)
 │   └── Renderer.h/.cpp       프레임 흐름과 그리기
 └── Shaders/
     ├── Common.hlsli          VS/PS 공용 cbuffer와 구조체
@@ -72,8 +78,26 @@ DX12Framework/
     └── Basic_PS.hlsl
 ```
 
-의존 방향은 `Core → (없음)`, `Graphics → Core`, `Application → Core + Graphics` 한 방향이다.
-`Window`가 D3D를 전혀 모르는 것도 같은 이유다. 창 코드와 그래픽 코드를 따로 고칠 수 있다.
+의존 방향은 `Core → (없음)`, `Graphics → Core`, `Input → Core`,
+`Application → Core + Graphics + Input` 한 방향이다.
+`Window`가 D3D도 입력도 모르는 것이 같은 이유다. `Window`는 받은 메시지를 콜백으로 흘려보내기만 하고,
+그것을 입력으로 해석하는 일은 `InputReader`가 한다. 창 코드 · 그래픽 코드 · 입력 코드를 따로 고칠 수 있다.
+
+### 입력 처리 순서
+
+`InputReader`는 프레임당 호출 순서가 정해져 있다.
+
+```cpp
+m_input->BeginFrame();          // 이전 프레임 상태 보관, 마우스 이동량 0으로 초기화
+m_window->ProcessMessages();    // 이 사이에 ProcessMessage가 여러 번 불린다
+// 이후 IsKeyDown / WasKeyPressed / GetMouseDeltaX ... 질의
+```
+
+`BeginFrame`을 메시지 펌프보다 **먼저** 부르는 것이 핵심이다.
+그래야 `WasKeyPressed`(눌린 그 프레임만 true)가 정확히 한 프레임만 참이 된다.
+
+이동은 `deltaTime`에 비례시키고(프레임률과 무관한 속도), 회전은 마우스가 움직인 픽셀 수에만
+비례시킨다(이동량 자체가 이미 이번 프레임 값이라 `deltaTime`을 곱하면 감도가 프레임률에 따라 달라진다).
 
 ## 한 프레임의 흐름
 
@@ -105,7 +129,8 @@ renderer.EndFrame(vsync);                     // 배리어 → Close → Execute
 |---|---|
 | 도형 추가 (구, 평면, 원기둥) | `GeometryFactory`에 함수 추가 |
 | 텍스처 | `DescriptorHeap`을 `CBV_SRV_UAV` + `shaderVisible=true`로 생성하고, 루트 시그니처에 디스크립터 테이블과 정적 샘플러 추가 |
-| 카메라 조작 | `Camera`에 이동/회전 메서드 추가, `Application::Update`에서 입력 처리 |
+| 이동 속도/감도 조정 | `Application`의 `m_cameraSpeed`, `m_mouseSensitivity` |
+| 게임패드, 키 리매핑 | `InputReader`에 상태 추가 후 `Application::UpdateCamera`에서 질의 |
 | 오브젝트 여러 개 | `Application`이 오브젝트 목록을 들고 `DrawMesh`를 반복 호출 (프레임당 상한은 `kMaxObjectsPerFrame`) |
 | 반투명 렌더링 | 블렌딩을 켠 PSO를 하나 더 만들고 그리기 순서를 분리 |
 | MSAA | 플립 모델 백버퍼에는 직접 걸 수 없다. 별도 렌더 타겟에 그린 뒤 `ResolveSubresource`로 옮겨야 한다 |

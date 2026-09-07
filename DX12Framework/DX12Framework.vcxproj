@@ -87,6 +87,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Core\stdafx.h" />
+    <ClInclude Include="Input\InputReader.h" />
     <ClInclude Include="Core\Application.h" />
     <ClInclude Include="Graphics\D3D12Helpers.h" />
     <ClInclude Include="Graphics\SwapChain.h" />
@@ -125,6 +126,7 @@
     <ClCompile Include="Graphics\PipelineState.cpp" />
     <ClCompile Include="Graphics\Mesh.cpp" />
     <ClCompile Include="Graphics\GeometryFactory.cpp" />
+    <ClCompile Include="Input\InputReader.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
