@@ -4,6 +4,9 @@
     <Filter Include="Core">
       <UniqueIdentifier>{3a1c9f40-2d6b-4c18-9f7e-51b0c2a7d3e1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Graphics">
+      <UniqueIdentifier>{7e2b4d81-9c30-4a56-b1df-8c4a06e9b275}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\stdafx.h">
@@ -21,6 +24,15 @@
     <ClInclude Include="Core\Window.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\D3D12Device.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\CommandQueue.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\DescriptorHeap.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Core\DXException.cpp">
@@ -34,6 +46,15 @@
     </ClCompile>
     <ClCompile Include="Core\Window.cpp">
       <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\D3D12Device.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\CommandQueue.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\DescriptorHeap.cpp">
+      <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Main.cpp" />
   </ItemGroup>

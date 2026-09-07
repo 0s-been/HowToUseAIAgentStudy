@@ -91,12 +91,18 @@
     <ClInclude Include="Core\Logger.h" />
     <ClInclude Include="Core\Timer.h" />
     <ClInclude Include="Core\Window.h" />
+    <ClInclude Include="Graphics\D3D12Device.h" />
+    <ClInclude Include="Graphics\CommandQueue.h" />
+    <ClInclude Include="Graphics\DescriptorHeap.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Core\DXException.cpp" />
     <ClCompile Include="Core\Logger.cpp" />
     <ClCompile Include="Core\Timer.cpp" />
     <ClCompile Include="Core\Window.cpp" />
+    <ClCompile Include="Graphics\D3D12Device.cpp" />
+    <ClCompile Include="Graphics\CommandQueue.cpp" />
+    <ClCompile Include="Graphics\DescriptorHeap.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

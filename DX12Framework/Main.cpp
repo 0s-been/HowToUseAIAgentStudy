@@ -1,13 +1,15 @@
 // Main.cpp
 // DX12Framework 진입점.
 //
-// [1단계] 현재는 창 생성 + 메시지 루프 + 타이머/로거 동작 확인까지만 담당한다.
+// [2단계] 창 + 타이머/로거에 더해 D3D12 디바이스와 커맨드 큐 생성까지 확인한다.
 //         이후 단계에서 Application 클래스로 옮겨 렌더러와 연결한다.
 
 #include "Core/stdafx.h"
 #include "Core/Logger.h"
 #include "Core/Timer.h"
 #include "Core/Window.h"
+#include "Graphics/CommandQueue.h"
+#include "Graphics/D3D12Device.h"
 
 int WINAPI wWinMain(
 	_In_ HINSTANCE hInstance,
@@ -32,6 +34,29 @@ int WINAPI wWinMain(
 	if (!window.Create())
 	{
 		LOG_ERROR(L"윈도우 생성에 실패해 종료한다.");
+		Logger::Get().Shutdown();
+		return -1;
+	}
+
+	// 디버그 레이어는 디버그 빌드에서만 켠다. 릴리스에서는 비용이 크다.
+#if defined(_DEBUG)
+	constexpr bool kEnableDebugLayer = true;
+#else
+	constexpr bool kEnableDebugLayer = false;
+#endif
+
+	D3D12Device device;
+	if (!device.Initialize(kEnableDebugLayer))
+	{
+		LOG_ERROR(L"D3D12 디바이스 초기화에 실패해 종료한다.");
+		Logger::Get().Shutdown();
+		return -1;
+	}
+
+	CommandQueue graphicsQueue;
+	if (!graphicsQueue.Initialize(device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT, L"GraphicsQueue"))
+	{
+		LOG_ERROR(L"커맨드 큐 초기화에 실패해 종료한다.");
 		Logger::Get().Shutdown();
 		return -1;
 	}
@@ -65,7 +90,16 @@ int WINAPI wWinMain(
 		}
 	}
 
+	// 리소스를 해제하기 전에 GPU가 모든 작업을 끝내도록 반드시 기다린다.
+	graphicsQueue.Flush();
+
 	LOG_INFO(L"===== DX12Framework 종료 (총 실행 시간 %.1f초) =====", timer.GetTotalTime());
+
+	graphicsQueue.Shutdown();
+	device.Shutdown();
 	Logger::Get().Shutdown();
+
+	// 해제되지 않은 D3D 객체가 있으면 출력 창에 보고된다.
+	D3D12Device::ReportLiveObjects();
 	return 0;
 }
