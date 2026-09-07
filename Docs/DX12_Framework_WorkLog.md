@@ -285,3 +285,38 @@ Space로 회전 정지/재개, V로 수직 동기화 토글, ESC로 종료. 창 
 3. **오브젝트 여러 개** — `Application`이 목록을 들고 `DrawMesh`를 반복 호출한다.
    프레임당 상한은 `kMaxObjectsPerFrame`(256).
 4. **GameObject-Component 계층** — 기존 `DirectXProj`(DX11)의 구조를 이 렌더링 코어 위에 얹는다.
+
+---
+
+## 빌드 수정 1 — `D3D12_PRIMITIVE_TOPOLOGY_TRIANGLELIST` 미선언 오류
+
+Visual Studio 첫 빌드에서 나온 오류.
+
+```
+Renderer.cpp(278,40): error C2065:
+  'D3D12_PRIMITIVE_TOPOLOGY_TRIANGLELIST': 선언되지 않은 식별자입니다.
+```
+
+### 원인
+`IASetPrimitiveTopology`가 받는 `D3D12_PRIMITIVE_TOPOLOGY`는 **`D3D_PRIMITIVE_TOPOLOGY`의 typedef**이다.
+따라서 열거값의 접두사는 `D3D12_`가 아니라 `D3D_`다.
+
+```cpp
+// d3d12.h
+typedef D3D_PRIMITIVE_TOPOLOGY D3D12_PRIMITIVE_TOPOLOGY;
+```
+
+이름이 비슷한 두 열거형을 헷갈린 것이다. 둘은 서로 다른 타입이고 쓰이는 곳도 다르다.
+
+| 식별자 | 소속 | 쓰는 곳 |
+|---|---|---|
+| `D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE` | `D3D12_PRIMITIVE_TOPOLOGY_TYPE` | PSO의 `PrimitiveTopologyType` (삼각형 "부류") |
+| `D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST` | `D3D_PRIMITIVE_TOPOLOGY` | 커맨드 리스트의 `IASetPrimitiveTopology` (리스트/스트립 등 구체적 방식) |
+
+PSO 쪽(`PipelineState.cpp`)은 원래 맞게 되어 있었고, 커맨드 리스트 쪽만 틀렸다.
+
+### 조치
+- `Renderer.cpp`: `D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST`로 수정하고, 두 열거형의 차이를 주석으로 남김
+- `Core/stdafx.h`: 전이 include에 의존하던 표준 헤더를 명시적으로 추가
+  (`<cstring>` `std::memcpy`, `<cstdio>` `swprintf_s`/`_vsnwprintf_s`, `<climits>` `UINT_MAX`)
+  — 컴파일러/SDK 버전에 따라 우연히 딸려 오던 것들이라 다음 오류가 될 소지가 있었다.

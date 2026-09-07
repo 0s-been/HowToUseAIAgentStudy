@@ -275,7 +275,10 @@ void Renderer::BeginFrame(const XMFLOAT4& clearColor)
 
 	// 루트 시그니처도 Reset으로 지워지므로 매 프레임 다시 설정해야 한다.
 	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
-	m_commandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	// D3D12_PRIMITIVE_TOPOLOGY는 D3D_PRIMITIVE_TOPOLOGY의 typedef이므로
+	// 열거값 접두사는 D3D12_가 아니라 D3D_다.
+	// (PSO에 넣는 D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE은 이름이 비슷하지만 다른 열거형이다.)
+	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	m_frameStarted = true;
 }
