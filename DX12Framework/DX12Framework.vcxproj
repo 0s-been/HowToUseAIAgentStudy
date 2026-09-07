@@ -100,7 +100,8 @@
     <ClInclude Include="Graphics\RootSignature.h" />
     <ClInclude Include="Graphics\PipelineState.h" />
     <ClInclude Include="Graphics\Mesh.h" />
-    <ClInclude Include="Graphics\GeometryFactory.h" />
+    <ClInclude Include="Graphics\GeometryGenerator.h" />
+    <ClInclude Include="Graphics\MeshFactory.h" />
     <ClInclude Include="Core\DXException.h" />
     <ClInclude Include="Core\Logger.h" />
     <ClInclude Include="Core\Timer.h" />
@@ -125,7 +126,8 @@
     <ClCompile Include="Graphics\RootSignature.cpp" />
     <ClCompile Include="Graphics\PipelineState.cpp" />
     <ClCompile Include="Graphics\Mesh.cpp" />
-    <ClCompile Include="Graphics\GeometryFactory.cpp" />
+    <ClCompile Include="Graphics\GeometryGenerator.cpp" />
+    <ClCompile Include="Graphics\MeshFactory.cpp" />
     <ClCompile Include="Input\InputReader.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>

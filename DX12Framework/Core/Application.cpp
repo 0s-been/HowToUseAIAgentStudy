@@ -1,7 +1,6 @@
 #include "Application.h"
 
 #include "Logger.h"
-#include "../Graphics/GeometryFactory.h"
 
 using namespace DirectX;
 
@@ -63,8 +62,8 @@ bool Application::Initialize(const std::wstring& title, UINT width, UINT height)
 	// 큐브가 화면에 알맞게 들어오는 위치에서 원점을 바라본다.
 	m_camera.SetLens(XMConvertToRadians(60.0f), m_renderer->GetAspectRatio(), 0.1f, 500.0f);
 	m_camera.LookAt(
-		XMFLOAT3(2.5f, 2.0f, -4.0f),	// 위치
-		XMFLOAT3(0.0f, 0.0f, 0.0f));	// 바라보는 지점
+		XMFLOAT3(4.0f, 3.5f, -7.0f),	// 위치
+		XMFLOAT3(0.0f, 1.0f, 0.0f));	// 바라보는 지점 (큐브 높이)
 
 	m_renderer->SetDirectionalLight(
 		XMFLOAT3(0.5f, -1.0f, 0.75f),		// 빛이 나아가는 방향
@@ -81,12 +80,29 @@ bool Application::Initialize(const std::wstring& title, UINT width, UINT height)
 
 bool Application::LoadResources()
 {
-	const MeshData boxData = GeometryFactory::CreateBox(1.5f, 1.5f, 1.5f);
-	if (!m_renderer->CreateMesh(m_cubeMesh, boxData, L"CubeMesh"))
+	if (!m_meshFactory.Initialize(m_renderer.get()))
 	{
-		LOG_ERROR(L"큐브 메시 생성 실패");
 		return false;
 	}
+
+	// 40 x 40 크기를 20 x 20칸으로 나눈 체커 바닥.
+	// 칸 하나가 2단위라 카메라가 얼마나 움직였는지 눈으로 가늠할 수 있다.
+	m_groundMesh = m_meshFactory.CreateGrid(
+		L"GroundGrid", 40.0f, 40.0f, 20, 20,
+		XMFLOAT4(0.62f, 0.64f, 0.68f, 1.0f),
+		XMFLOAT4(0.42f, 0.44f, 0.49f, 1.0f));
+	if (m_groundMesh == nullptr)
+	{
+		return false;
+	}
+
+	m_cubeMesh = m_meshFactory.CreateBox(L"Cube", 1.5f, 1.5f, 1.5f);
+	if (m_cubeMesh == nullptr)
+	{
+		return false;
+	}
+
+	LOG_INFO(L"리소스 로드 완료 (메시 %zu개)", m_meshFactory.GetCount());
 	return true;
 }
 
@@ -134,7 +150,12 @@ void Application::Shutdown()
 	{
 		// 메시를 파괴하기 전에 GPU 작업이 모두 끝나야 한다.
 		m_renderer->WaitForGpu();
-		m_cubeMesh.Shutdown();
+
+		// 팩토리가 보유한 모든 메시를 해제한다. 이후 관찰 포인터는 무효다.
+		m_meshFactory.Shutdown();
+		m_cubeMesh = nullptr;
+		m_groundMesh = nullptr;
+
 		m_renderer.reset();
 	}
 
@@ -187,8 +208,15 @@ void Application::Render()
 	m_renderer->BeginFrame(m_clearColor);
 	m_renderer->SetPassConstants(m_camera, m_timer.GetTotalTime());
 
-	const XMMATRIX world = XMMatrixRotationX(m_rotationX) * XMMatrixRotationY(m_rotationY);
-	m_renderer->DrawMesh(m_cubeMesh, world, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f));
+	// 바닥은 원점에 그대로 놓는다. 격자 자체가 이미 XZ 평면 위에 만들어져 있다.
+	m_renderer->DrawMesh(*m_groundMesh, XMMatrixIdentity(), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f));
+
+	// 큐브는 바닥에 파묻히지 않도록 반 높이만큼 띄운 뒤 회전시킨다.
+	const XMMATRIX cubeWorld =
+		XMMatrixRotationX(m_rotationX) *
+		XMMatrixRotationY(m_rotationY) *
+		XMMatrixTranslation(0.0f, 1.2f, 0.0f);
+	m_renderer->DrawMesh(*m_cubeMesh, cubeWorld, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f));
 
 	m_renderer->EndFrame(m_vsync);
 }

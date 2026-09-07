@@ -57,7 +57,10 @@
     <ClInclude Include="Graphics\Mesh.h">
       <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\GeometryFactory.h">
+    <ClInclude Include="Graphics\GeometryGenerator.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\MeshFactory.h">
       <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Core\DXException.h">
@@ -128,7 +131,10 @@
     <ClCompile Include="Graphics\Mesh.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\GeometryFactory.cpp">
+    <ClCompile Include="Graphics\GeometryGenerator.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\MeshFactory.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Input\InputReader.cpp">

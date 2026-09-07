@@ -69,7 +69,8 @@ DX12Framework/
 │   ├── Vertex.h              정점 포맷과 입력 레이아웃
 │   ├── ConstantBuffers.h     상수 버퍼 구조체 (HLSL과 짝을 이룸)
 │   ├── Mesh.h/.cpp           디폴트 힙 정점/인덱스 버퍼
-│   ├── GeometryFactory.h/.cpp 큐브 지오메트리 생성
+│   ├── GeometryGenerator.h/.cpp 도형의 CPU 정점/인덱스 데이터 생성
+│   ├── MeshFactory.h/.cpp    메시 생성·캐시·수명 관리 (메시의 소유자)
 │   ├── Camera.h/.cpp         1인칭 카메라 (yaw/pitch, 이동/회전)
 │   └── Renderer.h/.cpp       프레임 흐름과 그리기
 └── Shaders/
@@ -122,12 +123,36 @@ renderer.EndFrame(vsync);                     // 배리어 → Close → Execute
 - **정점/인덱스는 디폴트 힙**, 상수 버퍼는 업로드 힙. 전자는 임시 업로드 버퍼를 거쳐 복사하며,
   그 임시 버퍼는 GPU 복사가 끝난 뒤에야(`Flush` 이후) 해제할 수 있다.
 - **외부 의존성 없음**. `d3dx12.h` 대신 `D3D12Helpers.h`에 필요한 것만 직접 두었다.
+- **도형 데이터와 GPU 자원을 분리**. `GeometryGenerator`는 순수 CPU 계산만 하고,
+  `MeshFactory`가 그것을 GPU에 올려 이름으로 관리한다. 아래 참고.
+
+## 메시는 MeshFactory를 통해서만 만든다
+
+메시를 쓰는 쪽에서 직접 만들면 세 가지가 호출부에 흩어진다.
+도형 데이터 계산, GPU 업로드(제출 → 대기 → 임시 버퍼 해제), 그리고 GPU 작업이 끝난 뒤로 맞춰야 하는 소멸 시점.
+팩토리가 이 셋을 한곳에서 처리하므로 호출부는 이렇게만 쓰면 된다.
+
+```cpp
+m_meshFactory.Initialize(m_renderer.get());
+
+Mesh* ground = m_meshFactory.CreateGrid(L"GroundGrid", 40.0f, 40.0f, 20, 20, colorA, colorB);
+Mesh* cube   = m_meshFactory.CreateBox(L"Cube", 1.5f, 1.5f, 1.5f);
+Mesh* found  = m_meshFactory.Find(L"Cube");   // 같은 포인터
+```
+
+- **소유자는 팩토리다.** 호출부가 받는 것은 관찰용 포인터이며 해제하지 않는다.
+- **같은 이름은 재사용된다.** 여러 오브젝트가 같은 도형을 공유할 때 중복 업로드가 없다.
+- 내부적으로 `unique_ptr`에 담는다. 맵이 재해싱되어도 이미 나눠 준 `Mesh*`가 무효가 되지 않아야 하기 때문이다.
+- `Shutdown()`은 반드시 `Renderer::WaitForGpu()` **뒤에** 불러야 한다. GPU가 아직 그 메시를 그리고 있을 수 있다.
+
+새 도형은 `GeometryGenerator`에 `MeshData`를 돌려주는 함수를 하나 더하고,
+`MeshFactory::Create(name, data)`로 등록하면 끝난다. 렌더링 코드는 건드릴 필요가 없다.
 
 ## 여기서 확장하려면
 
 | 하고 싶은 것 | 손댈 곳 |
 |---|---|
-| 도형 추가 (구, 평면, 원기둥) | `GeometryFactory`에 함수 추가 |
+| 도형 추가 (구, 원기둥 등) | `GeometryGenerator`에 함수 하나 추가 → `MeshFactory::Create`로 등록 |
 | 텍스처 | `DescriptorHeap`을 `CBV_SRV_UAV` + `shaderVisible=true`로 생성하고, 루트 시그니처에 디스크립터 테이블과 정적 샘플러 추가 |
 | 이동 속도/감도 조정 | `Application`의 `m_cameraSpeed`, `m_mouseSensitivity` |
 | 게임패드, 키 리매핑 | `InputReader`에 상태 추가 후 `Application::UpdateCamera`에서 질의 |

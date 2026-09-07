@@ -18,7 +18,7 @@
 #include "CommandQueue.h"
 #include "ConstantBuffers.h"
 #include "D3D12Device.h"
-#include "GeometryFactory.h"
+#include "GeometryGenerator.h"
 #include "Mesh.h"
 #include "PipelineState.h"
 #include "RootSignature.h"

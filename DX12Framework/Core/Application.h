@@ -2,7 +2,9 @@
 // 프로그램 전체의 수명주기(Initialize -> Run -> Shutdown)와 메인 루프를 담당한다.
 // 창(Window)과 렌더러(Renderer)를 소유하고 둘을 이어 준다.
 //
-// 데모: 회전하는 큐브 하나를 그리고, WASD + 우클릭 드래그로 카메라를 움직인다.
+// 데모: 체커 무늬 격자 바닥 위에 회전하는 큐브를 그리고,
+//       WASD + 우클릭 드래그로 카메라를 움직인다.
+// 메시는 직접 만들지 않고 전부 MeshFactory를 통해 얻는다.
 // 실제 게임/툴을 만들 때는 이 클래스가 씬이나 오브젝트 목록을 들고 있게 확장하면 된다.
 
 #pragma once
@@ -11,6 +13,7 @@
 #include "Window.h"
 #include "../Graphics/Camera.h"
 #include "../Graphics/Mesh.h"
+#include "../Graphics/MeshFactory.h"
 #include "../Graphics/Renderer.h"
 #include "../Input/InputReader.h"
 
@@ -42,7 +45,11 @@ private:
 	Timer m_timer;
 
 	Camera m_camera;
-	Mesh m_cubeMesh;
+
+	// 메시의 소유자는 팩토리다. 아래 포인터는 관찰용이며 해제하지 않는다.
+	MeshFactory m_meshFactory;
+	Mesh* m_cubeMesh = nullptr;
+	Mesh* m_groundMesh = nullptr;
 
 	// 데모용 큐브의 현재 회전각(라디안).
 	float m_rotationY = 0.0f;
