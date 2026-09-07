@@ -1,3 +1,15 @@
+> **이 저장소에는 두 개의 프로젝트가 있습니다.**
+>
+> | 프로젝트 | API | 설명 |
+> |---|---|---|
+> | `DirectXProj` | DirectX 11 | 아래 문서가 설명하는 GameObject-Component 기반 게임 프레임워크 |
+> | `DX12Framework` | DirectX 12 | DX12 기본 프레임워크. 빌드 방법과 구조는 [`DX12Framework/README.md`](DX12Framework/README.md) 참고 |
+>
+> 두 프로젝트 모두 `DirectXProj.sln` 하나에 들어 있습니다.
+> 단계별 작업 내역은 [`Docs/DX12_Framework_WorkLog.md`](Docs/DX12_Framework_WorkLog.md)에 있습니다.
+
+---
+
 # DirectX 11 게임 프레임워크
 
 DirectX 11 기반으로 제작된 기본 게임 프레임워크입니다. Unity의 GameObject-Component 아키텍처에서 영감을 받아 제작되었습니다.
