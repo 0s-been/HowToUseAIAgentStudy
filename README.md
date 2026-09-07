@@ -1,8 +1,8 @@
 > **이 저장소에는 두 개의 프로젝트가 있습니다.**
->
+>---현재 DX11파일들은 삭제 추후 readme 갱신 예정
 > | 프로젝트 | API | 설명 |
 > |---|---|---|
-> | `DirectXProj` | DirectX 11 | 아래 문서가 설명하는 GameObject-Component 기반 게임 프레임워크 |   ---현재 DX11파일들은 삭제 추후 readme 갱신 예정
+> | `DirectXProj` | DirectX 11 | 아래 문서가 설명하는 GameObject-Component 기반 게임 프레임워크 | 
 > | `DX12Framework` | DirectX 12 | DX12 기본 프레임워크. 빌드 방법과 구조는 [`DX12Framework/README.md`](DX12Framework/README.md) 참고 |
 >
 > 두 프로젝트 모두 `DirectXProj.sln` 하나에 들어 있습니다.
