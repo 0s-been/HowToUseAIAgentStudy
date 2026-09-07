@@ -1,7 +1,6 @@
 #include "Logger.h"
 
 #include <cstdarg>
-#include <ctime>
 
 namespace
 {

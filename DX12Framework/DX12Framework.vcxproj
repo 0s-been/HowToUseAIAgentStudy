@@ -90,6 +90,7 @@
     <ClInclude Include="Core\Application.h" />
     <ClInclude Include="Graphics\D3D12Helpers.h" />
     <ClInclude Include="Graphics\SwapChain.h" />
+    <ClInclude Include="Graphics\Camera.h" />
     <ClInclude Include="Graphics\Renderer.h" />
     <ClInclude Include="Graphics\Vertex.h" />
     <ClInclude Include="Graphics\ConstantBuffers.h" />
@@ -117,6 +118,7 @@
     <ClCompile Include="Graphics\DescriptorHeap.cpp" />
     <ClCompile Include="Core\Application.cpp" />
     <ClCompile Include="Graphics\SwapChain.cpp" />
+    <ClCompile Include="Graphics\Camera.cpp" />
     <ClCompile Include="Graphics\Renderer.cpp" />
     <ClCompile Include="Graphics\Shader.cpp" />
     <ClCompile Include="Graphics\RootSignature.cpp" />
@@ -124,6 +126,11 @@
     <ClCompile Include="Graphics\Mesh.cpp" />
     <ClCompile Include="Graphics\GeometryFactory.cpp" />
     <ClCompile Include="Main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Common.hlsli" />
+    <None Include="Shaders\Basic_VS.hlsl" />
+    <None Include="Shaders\Basic_PS.hlsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

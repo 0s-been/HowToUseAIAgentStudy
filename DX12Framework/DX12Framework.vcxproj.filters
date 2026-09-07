@@ -4,6 +4,9 @@
     <Filter Include="Core">
       <UniqueIdentifier>{3a1c9f40-2d6b-4c18-9f7e-51b0c2a7d3e1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{b5e07c92-3f14-4d68-a27b-6d90f1c4a8e3}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Graphics">
       <UniqueIdentifier>{7e2b4d81-9c30-4a56-b1df-8c4a06e9b275}</UniqueIdentifier>
     </Filter>
@@ -19,6 +22,9 @@
       <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\SwapChain.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Camera.h">
       <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\Renderer.h">
@@ -98,6 +104,9 @@
     <ClCompile Include="Graphics\SwapChain.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\Camera.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Graphics\Renderer.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
@@ -117,5 +126,16 @@
       <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Common.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Basic_VS.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Basic_PS.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
