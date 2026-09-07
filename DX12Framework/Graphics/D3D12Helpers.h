@@ -87,4 +87,72 @@ namespace DX
 		barrier.Transition.Subresource = subresource;
 		return barrier;
 	}
+
+	// ---- 파이프라인 상태 기본값 ----
+	// d3dx12.h의 CD3DX12_*_DESC(D3D12_DEFAULT)에 해당하는 값들을 직접 채운다.
+
+	inline D3D12_RASTERIZER_DESC DefaultRasterizerDesc()
+	{
+		D3D12_RASTERIZER_DESC desc = {};
+		desc.FillMode = D3D12_FILL_MODE_SOLID;
+		desc.CullMode = D3D12_CULL_MODE_BACK;
+		// 정점을 시계 방향으로 감았을 때 앞면으로 본다. (왼손 좌표계 기준)
+		desc.FrontCounterClockwise = FALSE;
+		desc.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+		desc.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+		desc.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+		desc.DepthClipEnable = TRUE;
+		desc.MultisampleEnable = FALSE;
+		desc.AntialiasedLineEnable = FALSE;
+		desc.ForcedSampleCount = 0;
+		desc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+		return desc;
+	}
+
+	// 블렌딩 없는 불투명 렌더 타겟.
+	inline D3D12_BLEND_DESC OpaqueBlendDesc()
+	{
+		D3D12_BLEND_DESC desc = {};
+		desc.AlphaToCoverageEnable = FALSE;
+		desc.IndependentBlendEnable = FALSE;
+
+		D3D12_RENDER_TARGET_BLEND_DESC rt = {};
+		rt.BlendEnable = FALSE;
+		rt.LogicOpEnable = FALSE;
+		rt.SrcBlend = D3D12_BLEND_ONE;
+		rt.DestBlend = D3D12_BLEND_ZERO;
+		rt.BlendOp = D3D12_BLEND_OP_ADD;
+		rt.SrcBlendAlpha = D3D12_BLEND_ONE;
+		rt.DestBlendAlpha = D3D12_BLEND_ZERO;
+		rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+		rt.LogicOp = D3D12_LOGIC_OP_NOOP;
+		rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+		for (UINT i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
+		{
+			desc.RenderTarget[i] = rt;
+		}
+		return desc;
+	}
+
+	// 깊이 테스트 켜짐, 스텐실 꺼짐.
+	inline D3D12_DEPTH_STENCIL_DESC DefaultDepthStencilDesc()
+	{
+		D3D12_DEPTH_STENCIL_DESC desc = {};
+		desc.DepthEnable = TRUE;
+		desc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+		desc.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+		desc.StencilEnable = FALSE;
+		desc.StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK;
+		desc.StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK;
+
+		const D3D12_DEPTH_STENCILOP_DESC stencilOp =
+		{
+			D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP,
+			D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS
+		};
+		desc.FrontFace = stencilOp;
+		desc.BackFace = stencilOp;
+		return desc;
+	}
 }
