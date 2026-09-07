@@ -12,6 +12,18 @@
     <ClInclude Include="Core\stdafx.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="Core\Application.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\D3D12Helpers.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\SwapChain.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Renderer.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
     <ClInclude Include="Core\DXException.h">
       <Filter>Core</Filter>
     </ClInclude>
@@ -54,6 +66,15 @@
       <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\DescriptorHeap.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Application.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\SwapChain.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\Renderer.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Main.cpp" />

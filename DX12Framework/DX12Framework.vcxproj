@@ -87,6 +87,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Core\stdafx.h" />
+    <ClInclude Include="Core\Application.h" />
+    <ClInclude Include="Graphics\D3D12Helpers.h" />
+    <ClInclude Include="Graphics\SwapChain.h" />
+    <ClInclude Include="Graphics\Renderer.h" />
     <ClInclude Include="Core\DXException.h" />
     <ClInclude Include="Core\Logger.h" />
     <ClInclude Include="Core\Timer.h" />
@@ -103,6 +107,9 @@
     <ClCompile Include="Graphics\D3D12Device.cpp" />
     <ClCompile Include="Graphics\CommandQueue.cpp" />
     <ClCompile Include="Graphics\DescriptorHeap.cpp" />
+    <ClCompile Include="Core\Application.cpp" />
+    <ClCompile Include="Graphics\SwapChain.cpp" />
+    <ClCompile Include="Graphics\Renderer.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
