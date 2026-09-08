@@ -80,24 +80,22 @@ Mesh* MeshFactory::CreateBox(const std::wstring& name, float width, float height
 }
 
 Mesh* MeshFactory::CreateGrid(const std::wstring& name, float width, float depth,
-	uint32_t rowCount, uint32_t columnCount,
-	const DirectX::XMFLOAT4& colorA, const DirectX::XMFLOAT4& colorB)
+	uint32_t rowCount, uint32_t columnCount)
 {
 	if (Mesh* existing = Find(name))
 	{
 		return existing;
 	}
-	return Create(name, GeometryGenerator::CreateGrid(width, depth, rowCount, columnCount, colorA, colorB));
+	return Create(name, GeometryGenerator::CreateGrid(width, depth, rowCount, columnCount));
 }
 
-Mesh* MeshFactory::CreatePlane(const std::wstring& name, float width, float depth,
-	const DirectX::XMFLOAT4& color)
+Mesh* MeshFactory::CreatePlane(const std::wstring& name, float width, float depth)
 {
 	if (Mesh* existing = Find(name))
 	{
 		return existing;
 	}
-	return Create(name, GeometryGenerator::CreatePlane(width, depth, color));
+	return Create(name, GeometryGenerator::CreatePlane(width, depth));
 }
 
 Mesh* MeshFactory::Find(const std::wstring& name) const

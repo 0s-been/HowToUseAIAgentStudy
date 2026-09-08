@@ -17,6 +17,11 @@ cbuffer cbObject : register(b0)
 	float4x4 gWorld;
 	float4x4 gWorldInvTranspose;
 	float4   gBaseColor;
+
+	// gCheckerCellSize가 0이면 체커를 쓰지 않는다. (Graphics/ConstantBuffers.h 주석 참고)
+	float4   gCheckerColorB;
+	float    gCheckerCellSize;
+	float3   gCheckerPadding;
 };
 
 // 프레임(패스) 전체에서 공유하는 값

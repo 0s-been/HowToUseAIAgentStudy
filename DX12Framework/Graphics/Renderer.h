@@ -64,7 +64,12 @@ public:
 	// BeginFrame ~ EndFrame 사이에서만 그리기 명령을 기록할 수 있다.
 	void BeginFrame(const DirectX::XMFLOAT4& clearColor);
 	void SetPassConstants(const Camera& camera, float totalTime);
-	void DrawMesh(const Mesh& mesh, const DirectX::XMMATRIX& world, const DirectX::XMFLOAT4& baseColor);
+	// checkerCellSize가 0(기본값)이면 baseColor를 그대로 쓴다(기존과 동일).
+	// 0보다 크면 baseColor를 첫 번째 체커 색으로, checkerColorB를 두 번째 색으로 써서
+	// 픽셀 셰이더가 화면 공간 도함수로 앤티앨리어싱된 체커 무늬를 그린다.
+	void DrawMesh(const Mesh& mesh, const DirectX::XMMATRIX& world, const DirectX::XMFLOAT4& baseColor,
+		const DirectX::XMFLOAT4& checkerColorB = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f),
+		float checkerCellSize = 0.0f);
 	void EndFrame(bool vsync);
 
 	// 제출된 모든 GPU 작업이 끝날 때까지 대기한다.

@@ -52,6 +52,12 @@ private:
 	Mesh* m_cubeMesh = nullptr;
 	Mesh* m_groundMesh = nullptr;
 
+	// 바닥 체커 무늬의 두 색과 칸 크기(월드 단위). 메시 자체는 색을 갖지 않으므로
+	// 그릴 때(DrawMesh) 넘겨준다. 칸 크기는 격자를 만들 때 쓴 값(40/20)과 맞춰야 한다.
+	DirectX::XMFLOAT4 m_groundColorA = { 0.62f, 0.64f, 0.68f, 1.0f };
+	DirectX::XMFLOAT4 m_groundColorB = { 0.42f, 0.44f, 0.49f, 1.0f };
+	float m_groundCellSize = 2.0f;
+
 	// 데모용 큐브의 현재 회전각(라디안).
 	float m_rotationY = 0.0f;
 	float m_rotationX = 0.0f;

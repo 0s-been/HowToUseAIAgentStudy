@@ -85,29 +85,29 @@ MeshData GeometryGenerator::CreateBox(float width, float height, float depth)
 	return mesh;
 }
 
-MeshData GeometryGenerator::CreateGrid(float width, float depth,
-	uint32_t rowCount, uint32_t columnCount,
-	const XMFLOAT4& colorA, const XMFLOAT4& colorB)
+MeshData GeometryGenerator::CreateGrid(float width, float depth, uint32_t rowCount, uint32_t columnCount)
 {
 	MeshData mesh;
 
 	rowCount = std::max(1u, rowCount);
 	columnCount = std::max(1u, columnCount);
 
-	// 칸이 너무 많으면 uint16_t 인덱스 범위를 넘는다.
-	// 실패시키는 대신 가로세로 비율을 유지한 채 줄이고 경고를 남긴다.
-	const uint64_t cellCount = static_cast<uint64_t>(rowCount) * columnCount;
-	if (cellCount > kMaxGridCells)
+	// 공유 정점 격자라 정점 수는 (row+1) x (col+1)이다. 인덱스가 uint16_t라
+	// 65,536개를 넘을 수 없다. 넘으면 실패시키는 대신 가로세로 비율을 유지한 채
+	// 줄이고 경고를 남긴다.
+	uint64_t vertexCount = static_cast<uint64_t>(rowCount + 1) * (columnCount + 1);
+	if (vertexCount > kMaxGridVertices)
 	{
-		const float scale = std::sqrt(static_cast<float>(kMaxGridCells) / static_cast<float>(cellCount));
+		const float scale = std::sqrt(static_cast<float>(kMaxGridVertices) / static_cast<float>(vertexCount));
 		const uint32_t newRows = std::max(1u, static_cast<uint32_t>(static_cast<float>(rowCount) * scale));
 		const uint32_t newCols = std::max(1u, static_cast<uint32_t>(static_cast<float>(columnCount) * scale));
 
-		LOG_WARN(L"격자 칸 수가 uint16_t 인덱스 한계를 넘는다. %u x %u -> %u x %u 로 줄인다.",
+		LOG_WARN(L"격자 정점 수가 uint16_t 인덱스 한계를 넘는다. 칸 %u x %u -> %u x %u 로 줄인다.",
 			rowCount, columnCount, newRows, newCols);
 
 		rowCount = newRows;
 		columnCount = newCols;
+		vertexCount = static_cast<uint64_t>(rowCount + 1) * (columnCount + 1);
 	}
 
 	const float halfWidth = 0.5f * width;
@@ -115,49 +115,60 @@ MeshData GeometryGenerator::CreateGrid(float width, float depth,
 	const float cellWidth = width / static_cast<float>(columnCount);
 	const float cellDepth = depth / static_cast<float>(rowCount);
 
-	mesh.vertices.reserve(static_cast<size_t>(rowCount) * columnCount * 4);
-	mesh.indices.reserve(static_cast<size_t>(rowCount) * columnCount * 6);
+	mesh.vertices.reserve(static_cast<size_t>(vertexCount));
 
 	const XMFLOAT3 normal = { 0.0f, 1.0f, 0.0f };
+	// 색은 여기서 정하지 않는다(흰색 = 곱해도 그대로). 실제 색/체커 무늬는
+	// Renderer::DrawMesh에 넘기는 값으로 픽셀 셰이더가 결정한다.
+	const XMFLOAT4 white = { 1.0f, 1.0f, 1.0f, 1.0f };
 
+	// row는 Z(깊이) 방향, column은 X(너비) 방향으로 격자점을 순서대로 둔다.
+	for (uint32_t row = 0; row <= rowCount; ++row)
+	{
+		const float z = -halfDepth + static_cast<float>(row) * cellDepth;
+		const float v = static_cast<float>(row) / static_cast<float>(rowCount);
+
+		for (uint32_t column = 0; column <= columnCount; ++column)
+		{
+			const float x = -halfWidth + static_cast<float>(column) * cellWidth;
+			const float u = static_cast<float>(column) / static_cast<float>(columnCount);
+
+			mesh.vertices.push_back({ { x, 0.0f, z }, normal, white, { u, v } });
+		}
+	}
+
+	mesh.indices.reserve(static_cast<size_t>(rowCount) * columnCount * 6);
+
+	const uint32_t rowStride = columnCount + 1;
 	for (uint32_t row = 0; row < rowCount; ++row)
 	{
 		for (uint32_t column = 0; column < columnCount; ++column)
 		{
-			const float x0 = -halfWidth + static_cast<float>(column) * cellWidth;
-			const float x1 = x0 + cellWidth;
-			const float z0 = -halfDepth + static_cast<float>(row) * cellDepth;
-			const float z1 = z0 + cellDepth;
+			// 이 칸 네 모서리의 정점 인덱스.
+			//   i0 --- i1
+			//   |       |
+			//   i2 --- i3
+			const uint16_t i0 = static_cast<uint16_t>(row * rowStride + column);
+			const uint16_t i1 = static_cast<uint16_t>(i0 + 1);
+			const uint16_t i2 = static_cast<uint16_t>(i0 + rowStride);
+			const uint16_t i3 = static_cast<uint16_t>(i2 + 1);
 
-			// 체커 무늬. 인접한 칸끼리 색이 달라진다.
-			const XMFLOAT4& color = (((row + column) % 2) == 0) ? colorA : colorB;
+			// 큐브 윗면과 같은 감기 순서: (x-,z-) -> (x-,z+) -> (x+,z+) -> (x+,z-)
+			mesh.indices.push_back(i0);
+			mesh.indices.push_back(i2);
+			mesh.indices.push_back(i3);
 
-			const uint16_t base = static_cast<uint16_t>(mesh.vertices.size());
-
-			// 감는 순서는 큐브의 윗면과 같다.
-			// (x-,z-) -> (x-,z+) -> (x+,z+) -> (x+,z-)
-			// 왼손 좌표계에서 위쪽(+Y)이 앞면이 되는 순서다.
-			mesh.vertices.push_back({ { x0, 0.0f, z0 }, normal, color, { 0.0f, 1.0f } });
-			mesh.vertices.push_back({ { x0, 0.0f, z1 }, normal, color, { 0.0f, 0.0f } });
-			mesh.vertices.push_back({ { x1, 0.0f, z1 }, normal, color, { 1.0f, 0.0f } });
-			mesh.vertices.push_back({ { x1, 0.0f, z0 }, normal, color, { 1.0f, 1.0f } });
-
-			mesh.indices.push_back(static_cast<uint16_t>(base + 0));
-			mesh.indices.push_back(static_cast<uint16_t>(base + 1));
-			mesh.indices.push_back(static_cast<uint16_t>(base + 2));
-
-			mesh.indices.push_back(static_cast<uint16_t>(base + 0));
-			mesh.indices.push_back(static_cast<uint16_t>(base + 2));
-			mesh.indices.push_back(static_cast<uint16_t>(base + 3));
+			mesh.indices.push_back(i0);
+			mesh.indices.push_back(i3);
+			mesh.indices.push_back(i1);
 		}
 	}
 
 	return mesh;
 }
 
-MeshData GeometryGenerator::CreatePlane(float width, float depth, const XMFLOAT4& color)
+MeshData GeometryGenerator::CreatePlane(float width, float depth)
 {
-	// 칸이 하나뿐이고 두 색이 같은 격자가 곧 평면이다.
-	// 같은 계산을 두 번 쓰지 않도록 위임한다.
-	return CreateGrid(width, depth, 1, 1, color, color);
+	// 칸이 하나뿐인 격자가 곧 평면이다. 같은 계산을 두 번 쓰지 않도록 위임한다.
+	return CreateGrid(width, depth, 1, 1);
 }

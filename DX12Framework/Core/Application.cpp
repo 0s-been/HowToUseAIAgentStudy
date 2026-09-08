@@ -85,12 +85,11 @@ bool Application::LoadResources()
 		return false;
 	}
 
-	// 40 x 40 크기를 20 x 20칸으로 나눈 체커 바닥.
+	// 40 x 40 크기를 20 x 20칸으로 나눈 바닥. m_groundCellSize(2.0f)와 맞춰야 한다.
 	// 칸 하나가 2단위라 카메라가 얼마나 움직였는지 눈으로 가늠할 수 있다.
-	m_groundMesh = m_meshFactory.CreateGrid(
-		L"GroundGrid", 40.0f, 40.0f, 20, 20,
-		XMFLOAT4(0.62f, 0.64f, 0.68f, 1.0f),
-		XMFLOAT4(0.42f, 0.44f, 0.49f, 1.0f));
+	// 메시 자체는 흰색 정점만 가지고 있고, 체커 무늬는 Render()에서 DrawMesh에
+	// 색을 넘겨 픽셀 셰이더가 그린다 (화면 공간 도함수로 앤티앨리어싱된다).
+	m_groundMesh = m_meshFactory.CreateGrid(L"GroundGrid", 40.0f, 40.0f, 20, 20);
 	if (m_groundMesh == nullptr)
 	{
 		return false;
@@ -215,7 +214,9 @@ void Application::Render()
 	m_renderer->SetPassConstants(m_camera, m_timer.GetTotalTime());
 
 	// 바닥은 원점에 그대로 놓는다. 격자 자체가 이미 XZ 평면 위에 만들어져 있다.
-	m_renderer->DrawMesh(*m_groundMesh, XMMatrixIdentity(), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f));
+	// 체커 무늬는 정점 색이 아니라 픽셀 셰이더에서 화면 공간 도함수로 계산되어
+	// 먼 거리에서도(칸이 화면 1픽셀보다 작아져도) 어른거리지 않는다.
+	m_renderer->DrawMesh(*m_groundMesh, XMMatrixIdentity(), m_groundColorA, m_groundColorB, m_groundCellSize);
 
 	// 큐브는 바닥에 파묻히지 않도록 반 높이만큼 띄운 뒤 회전시킨다.
 	const XMMATRIX cubeWorld =

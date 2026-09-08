@@ -43,12 +43,12 @@ public:
 	// 실패하면 nullptr를 반환한다.
 	Mesh* CreateBox(const std::wstring& name, float width, float height, float depth);
 
+	// 격자/평면은 색을 갖지 않는다(흰색 정점). 어떤 색/무늬로 그릴지는
+	// Renderer::DrawMesh에 넘기는 값이 결정한다.
 	Mesh* CreateGrid(const std::wstring& name, float width, float depth,
-		uint32_t rowCount, uint32_t columnCount,
-		const DirectX::XMFLOAT4& colorA, const DirectX::XMFLOAT4& colorB);
+		uint32_t rowCount, uint32_t columnCount);
 
-	Mesh* CreatePlane(const std::wstring& name, float width, float depth,
-		const DirectX::XMFLOAT4& color);
+	Mesh* CreatePlane(const std::wstring& name, float width, float depth);
 
 	// 직접 만든 MeshData를 등록한다.
 	// 새 도형을 추가할 때 GeometryGenerator에 함수 하나만 늘리고 이걸 쓰면 된다.

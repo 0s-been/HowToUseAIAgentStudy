@@ -330,7 +330,8 @@ void Renderer::SetPassConstants(const Camera& camera, float totalTime)
 	m_commandList->SetGraphicsRootConstantBufferView(1, frame.passCB->GetGpuAddress(0));
 }
 
-void Renderer::DrawMesh(const Mesh& mesh, const XMMATRIX& world, const XMFLOAT4& baseColor)
+void Renderer::DrawMesh(const Mesh& mesh, const XMMATRIX& world, const XMFLOAT4& baseColor,
+	const XMFLOAT4& checkerColorB, float checkerCellSize)
 {
 	if (!m_frameStarted || !mesh.IsValid())
 	{
@@ -353,6 +354,8 @@ void Renderer::DrawMesh(const Mesh& mesh, const XMMATRIX& world, const XMFLOAT4&
 	constants.worldInvTranspose = StoreForShader(worldInvTranspose);
 
 	constants.baseColor = baseColor;
+	constants.checkerColorB = checkerColorB;
+	constants.checkerCellSize = checkerCellSize;
 
 	const UINT slot = m_objectCount;
 	frame.objectCB->CopyData(slot, constants);
