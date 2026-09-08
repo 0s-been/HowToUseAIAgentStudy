@@ -225,5 +225,6 @@ renderer.DrawMesh(*groundMesh, XMMatrixIdentity(), colorA, colorB, /*cellSize=*/
 | 오브젝트 여러 개 | `Application`이 오브젝트 목록을 들고 `DrawMesh`를 반복 호출 (프레임당 상한은 `kMaxObjectsPerFrame`) |
 | 반투명 렌더링 | 블렌딩을 켠 PSO를 하나 더 만들고 그리기 순서를 분리 |
 | MSAA 샘플 수 조정 | `SwapChain::kDesiredMsaaSampleCount` (기본 4) |
+| 모션 블러 (선택) | 오브젝트별 이전 프레임 변환(속도 버퍼) 기록 + 후처리 블러 패스 추가. 빠르게 움직일 때 보이는 잔상은 모니터의 sample-and-hold 표시 방식 때문이라 앱 버그는 아니지만, 체감을 줄이고 싶다면 이 방향 |
 
 단계별로 무엇을 왜 그렇게 했는지는 [`../Docs/DX12_Framework_WorkLog.md`](../Docs/DX12_Framework_WorkLog.md)에 정리해 두었다.
