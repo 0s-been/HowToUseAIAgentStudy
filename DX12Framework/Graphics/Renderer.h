@@ -75,6 +75,12 @@ public:
 		const DirectX::XMFLOAT4& color,
 		const DirectX::XMFLOAT4& ambient);
 
+	// 와이어프레임 표시를 켜고 끈다. 다음 BeginFrame부터 반영된다.
+	// (Renderer가 SetDirectionalLight처럼 몇 프레임에 한 번 바뀌는 렌더 상태를
+	//  몇 개 들고 있는 기존 방식과 같은 자리에 둔다.)
+	void SetWireframe(bool enabled) { m_wireframeEnabled = enabled; }
+	bool IsWireframeEnabled() const { return m_wireframeEnabled; }
+
 	D3D12Device& GetDevice() { return m_device; }
 	CommandQueue& GetGraphicsQueue() { return m_graphicsQueue; }
 	SwapChain& GetSwapChain() { return m_swapChain; }
@@ -92,7 +98,10 @@ private:
 	SwapChain m_swapChain;
 
 	RootSignature m_rootSignature;
-	PipelineState m_pipelineState;
+	// 채우기 모드만 다른 PSO 두 개를 미리 만들어 두고 프레임마다 골라 쓴다.
+	// (PSO는 불변 객체라 "지금만 와이어프레임으로" 같은 부분 변경이 불가능하다)
+	PipelineState m_solidPipelineState;
+	PipelineState m_wireframePipelineState;
 
 	FrameContext m_frames[kFrameBufferCount];
 	ComPtr<ID3D12GraphicsCommandList> m_commandList;
@@ -102,6 +111,7 @@ private:
 	// 이번 프레임에서 지금까지 그린 오브젝트 수. 상수 버퍼의 몇 번째 칸을 쓸지 정한다.
 	UINT m_objectCount = 0;
 	bool m_frameStarted = false;
+	bool m_wireframeEnabled = false;
 
 	DirectX::XMFLOAT3 m_lightDirection = { 0.577f, -0.577f, 0.577f };
 	DirectX::XMFLOAT4 m_lightColor = { 1.0f, 0.97f, 0.92f, 1.0f };

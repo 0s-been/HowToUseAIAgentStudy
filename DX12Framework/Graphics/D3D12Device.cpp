@@ -271,6 +271,23 @@ void D3D12Device::CheckTearingSupport()
 	}
 }
 
+UINT D3D12Device::QueryMsaaQualityLevels(DXGI_FORMAT format, UINT sampleCount) const
+{
+	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS levels = {};
+	levels.Format = format;
+	levels.SampleCount = sampleCount;
+	levels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+
+	if (FAILED(m_device->CheckFeatureSupport(
+			D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &levels, sizeof(levels))))
+	{
+		return 0;
+	}
+
+	// NumQualityLevels가 0이면 이 포맷/샘플 수 조합을 하드웨어가 지원하지 않는다는 뜻이다.
+	return levels.NumQualityLevels;
+}
+
 void D3D12Device::ReportLiveObjects()
 {
 #if defined(_DEBUG)

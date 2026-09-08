@@ -141,10 +141,23 @@ bool Renderer::CreateGraphicsPipeline(const std::wstring& shaderDirectory)
 	// PSO의 포맷은 실제 렌더 타겟/깊이 버퍼와 정확히 일치해야 한다.
 	desc.RTVFormats[0] = SwapChain::kBackBufferFormat;
 	desc.DSVFormat = SwapChain::kDepthStencilFormat;
+	// MSAA 타겟에 그리므로 PSO의 샘플 수/품질도 그것과 맞춰야 한다. 다르면 생성이 실패한다.
+	desc.SampleDesc.Count = m_swapChain.GetSampleCount();
+	desc.SampleDesc.Quality = m_swapChain.GetSampleQuality();
+	desc.RasterizerState.MultisampleEnable = m_swapChain.IsMsaaEnabled() ? TRUE : FALSE;
 
 	// CreateGraphicsPipelineState는 셰이더 바이트코드를 내부로 복사한다.
-	// 따라서 지역 변수인 vertexShader/pixelShader가 여기서 소멸해도 문제없다.
-	return m_pipelineState.Initialize(m_device.Get(), desc, L"BasicPSO");
+	// 따라서 지역 변수인 vertexShader/pixelShader가 이후에도 계속 쓰여도(두 PSO 모두) 문제없다.
+	if (!m_solidPipelineState.Initialize(m_device.Get(), desc, L"SolidPSO"))
+	{
+		return false;
+	}
+
+	// 와이어프레임 PSO. 채우기 모드만 다르고 나머지 상태는 전부 같다.
+	// 같은 정점/픽셀 셰이더를 그대로 쓰므로 선도 조명이 적용된 색으로 그려진다.
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC wireframeDesc = desc;
+	wireframeDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+	return m_wireframePipelineState.Initialize(m_device.Get(), wireframeDesc, L"WireframePSO");
 }
 
 bool Renderer::CreateMesh(Mesh& outMesh, const MeshData& data, const wchar_t* debugName)
@@ -187,7 +200,8 @@ void Renderer::Shutdown()
 		m_graphicsQueue.Flush();
 	}
 
-	m_pipelineState.Shutdown();
+	m_solidPipelineState.Shutdown();
+	m_wireframePipelineState.Shutdown();
 	m_rootSignature.Shutdown();
 
 	m_commandList.Reset();
@@ -246,17 +260,25 @@ void Renderer::BeginFrame(const XMFLOAT4& clearColor)
 
 	// 얼로케이터를 Reset하면 이전에 기록된 명령이 통째로 버려진다.
 	frame.commandAllocator->Reset();
-	m_commandList->Reset(frame.commandAllocator.Get(), m_pipelineState.Get());
+	m_commandList->Reset(frame.commandAllocator.Get(),
+		m_wireframeEnabled ? m_wireframePipelineState.Get() : m_solidPipelineState.Get());
 
 	m_objectCount = 0;
 
-	// 백버퍼를 '표시용'에서 '렌더 타겟'으로 전이시킨다.
-	// 이 배리어를 빠뜨리면 디버그 레이어가 즉시 오류를 낸다.
-	const D3D12_RESOURCE_BARRIER toRenderTarget = DX::TransitionBarrier(
-		m_swapChain.GetCurrentBackBuffer(),
-		D3D12_RESOURCE_STATE_PRESENT,
-		D3D12_RESOURCE_STATE_RENDER_TARGET);
-	m_commandList->ResourceBarrier(1, &toRenderTarget);
+	// MSAA가 꺼져 있을 때만 백버퍼에 직접 그린다. 켜져 있으면 SwapChain의 별도 MSAA
+	// 타겟에 그리고, EndFrame에서 Resolve로 백버퍼에 내려받는다.
+	// (플립 모델 백버퍼는 멀티샘플을 직접 지원하지 않는다)
+	const bool msaaEnabled = m_swapChain.IsMsaaEnabled();
+	if (!msaaEnabled)
+	{
+		// 백버퍼를 '표시용'에서 '렌더 타겟'으로 전이시킨다.
+		// 이 배리어를 빠뜨리면 디버그 레이어가 즉시 오류를 낸다.
+		const D3D12_RESOURCE_BARRIER toRenderTarget = DX::TransitionBarrier(
+			m_swapChain.GetCurrentBackBuffer(),
+			D3D12_RESOURCE_STATE_PRESENT,
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
+		m_commandList->ResourceBarrier(1, &toRenderTarget);
+	}
 
 	// 뷰포트와 가위 영역은 커맨드 리스트를 Reset할 때마다 초기화되므로 매 프레임 다시 설정한다.
 	const D3D12_VIEWPORT viewport = m_swapChain.GetViewport();
@@ -264,7 +286,8 @@ void Renderer::BeginFrame(const XMFLOAT4& clearColor)
 	m_commandList->RSSetViewports(1, &viewport);
 	m_commandList->RSSetScissorRects(1, &scissor);
 
-	const D3D12_CPU_DESCRIPTOR_HANDLE rtv = m_swapChain.GetCurrentBackBufferView();
+	// MSAA가 켜져 있으면 MSAA 타겟을, 꺼져 있으면 백버퍼 자체를 돌려준다.
+	const D3D12_CPU_DESCRIPTOR_HANDLE rtv = m_swapChain.GetColorTargetView();
 	const D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_swapChain.GetDepthStencilView();
 	m_commandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
 
@@ -351,12 +374,40 @@ void Renderer::EndFrame(bool vsync)
 
 	FrameContext& frame = m_frames[m_currentFrameIndex];
 
-	// 화면에 내보내려면 다시 PRESENT 상태여야 한다.
-	const D3D12_RESOURCE_BARRIER toPresent = DX::TransitionBarrier(
-		m_swapChain.GetCurrentBackBuffer(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET,
-		D3D12_RESOURCE_STATE_PRESENT);
-	m_commandList->ResourceBarrier(1, &toPresent);
+	if (m_swapChain.IsMsaaEnabled())
+	{
+		// MSAA 타겟의 내용을 백버퍼로 다운샘플한다. 깊이 버퍼는 Resolve하지 않는다 -
+		// 이번 프레임 안에서만 쓰고 버리는 값이라 다음 프레임에 넘길 필요가 없다.
+		ID3D12Resource* msaaTarget = m_swapChain.GetMsaaColorTarget();
+		ID3D12Resource* backBuffer = m_swapChain.GetCurrentBackBuffer();
+
+		const D3D12_RESOURCE_BARRIER preResolve[] =
+		{
+			DX::TransitionBarrier(msaaTarget, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE),
+			DX::TransitionBarrier(backBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RESOLVE_DEST),
+		};
+		m_commandList->ResourceBarrier(_countof(preResolve), preResolve);
+
+		m_commandList->ResolveSubresource(backBuffer, 0, msaaTarget, 0, SwapChain::kBackBufferFormat);
+
+		// 두 리소스 모두 다음 프레임이 기대하는 상태로 되돌려 둔다.
+		// (MSAA 타겟은 RENDER_TARGET, 백버퍼는 PRESENT — BeginFrame의 가정과 대칭을 이룬다)
+		const D3D12_RESOURCE_BARRIER postResolve[] =
+		{
+			DX::TransitionBarrier(msaaTarget, D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			DX::TransitionBarrier(backBuffer, D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PRESENT),
+		};
+		m_commandList->ResourceBarrier(_countof(postResolve), postResolve);
+	}
+	else
+	{
+		// 화면에 내보내려면 다시 PRESENT 상태여야 한다.
+		const D3D12_RESOURCE_BARRIER toPresent = DX::TransitionBarrier(
+			m_swapChain.GetCurrentBackBuffer(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PRESENT);
+		m_commandList->ResourceBarrier(1, &toPresent);
+	}
 
 	m_commandList->Close();
 

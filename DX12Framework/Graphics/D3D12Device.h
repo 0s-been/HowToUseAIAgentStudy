@@ -29,6 +29,11 @@ public:
 	// 가변 주사율(티어링) 지원 여부. 스왑체인 생성/Present 플래그에 쓰인다.
 	bool IsTearingSupported() const { return m_tearingSupported; }
 
+	// format/sampleCount 조합의 MSAA 지원 여부를 확인한다.
+	// 반환값이 0이면 그 조합을 지원하지 않는다(요청한 샘플 수를 낮춰야 한다).
+	// 0보다 크면 그 값 - 1이 리소스 생성 시 넘길 수 있는 최고 품질 레벨이다.
+	UINT QueryMsaaQualityLevels(DXGI_FORMAT format, UINT sampleCount) const;
+
 	const std::wstring& GetAdapterName() const { return m_adapterName; }
 	D3D_FEATURE_LEVEL GetFeatureLevel() const { return m_featureLevel; }
 

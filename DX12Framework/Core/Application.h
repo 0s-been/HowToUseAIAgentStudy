@@ -5,6 +5,7 @@
 // 데모: 체커 무늬 격자 바닥 위에 회전하는 큐브를 그리고,
 //       WASD + 우클릭 드래그로 카메라를 움직인다.
 // 메시는 직접 만들지 않고 전부 MeshFactory를 통해 얻는다.
+// Tab으로 솔리드/와이어프레임을 토글할 수 있다.
 // 실제 게임/툴을 만들 때는 이 클래스가 씬이나 오브젝트 목록을 들고 있게 확장하면 된다.
 
 #pragma once
@@ -55,6 +56,7 @@ private:
 	float m_rotationY = 0.0f;
 	float m_rotationX = 0.0f;
 	bool m_rotationPaused = false;
+	bool m_wireframeEnabled = false;
 
 	// 카메라 이동 속도(초당 단위 거리)와 Shift를 눌렀을 때의 배율.
 	float m_cameraSpeed = 5.0f;

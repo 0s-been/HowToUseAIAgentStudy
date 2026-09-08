@@ -185,6 +185,12 @@ void Application::Update(float deltaTime)
 		m_rotationPaused = !m_rotationPaused;
 		LOG_INFO(L"큐브 회전: %s", m_rotationPaused ? L"정지" : L"재개");
 	}
+	if (m_input->WasKeyPressed(VK_TAB))
+	{
+		m_wireframeEnabled = !m_wireframeEnabled;
+		m_renderer->SetWireframe(m_wireframeEnabled);
+		LOG_INFO(L"와이어프레임: %s", m_wireframeEnabled ? L"켜짐" : L"꺼짐");
+	}
 
 	UpdateCamera(deltaTime);
 

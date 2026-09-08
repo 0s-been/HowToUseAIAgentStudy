@@ -23,6 +23,22 @@ bool SwapChain::Initialize(D3D12Device* device, CommandQueue* presentQueue, HWND
 	// 나중에 Present에서만 요청할 수는 없다.
 	m_swapChainFlags = m_tearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
+	// MSAA 지원 여부를 확인한다. 대부분의 D3D12 하드웨어가 4x MSAA를 지원하지만,
+	// 지원하지 않는 조합(예: 오래된 WARP)을 만나면 안티앨리어싱 없이 계속 진행한다.
+	const UINT qualityLevels = device->QueryMsaaQualityLevels(kBackBufferFormat, kDesiredMsaaSampleCount);
+	if (qualityLevels > 0)
+	{
+		m_sampleCount = kDesiredMsaaSampleCount;
+		m_msaaQuality = qualityLevels - 1;	// 항상 지원되는 최고 품질 레벨을 쓴다.
+		LOG_INFO(L"%u배 MSAA 사용 (품질 레벨 %u)", m_sampleCount, m_msaaQuality);
+	}
+	else
+	{
+		m_sampleCount = 1;
+		m_msaaQuality = 0;
+		LOG_WARN(L"%u배 MSAA를 지원하지 않는 하드웨어다. 안티앨리어싱 없이 진행한다.", kDesiredMsaaSampleCount);
+	}
+
 	// RTV는 백버퍼 장수만큼, DSV는 1개만 필요하다.
 	if (!m_rtvHeap.Initialize(device->Get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, kFrameBufferCount, false, L"SwapChainRtvHeap"))
 	{
@@ -40,11 +56,29 @@ bool SwapChain::Initialize(D3D12Device* device, CommandQueue* presentQueue, HWND
 		return false;
 	}
 
+	// MSAA가 켜졌을 때만 색상 타겟용 힙을 따로 마련한다.
+	if (m_sampleCount > 1)
+	{
+		if (!m_msaaRtvHeap.Initialize(device->Get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 1, false, L"SwapChainMsaaRtvHeap"))
+		{
+			return false;
+		}
+		m_msaaRtvIndex = m_msaaRtvHeap.Allocate(1);
+		if (m_msaaRtvIndex == DescriptorHeap::kInvalidIndex)
+		{
+			return false;
+		}
+	}
+
 	if (!CreateSwapChain(hWnd))
 	{
 		return false;
 	}
 	if (!CreateRenderTargetViews())
+	{
+		return false;
+	}
+	if (m_sampleCount > 1 && !CreateMsaaColorTarget())
 	{
 		return false;
 	}
@@ -72,6 +106,7 @@ void SwapChain::Shutdown()
 	m_swapChain.Reset();
 	m_rtvHeap.Shutdown();
 	m_dsvHeap.Shutdown();
+	m_msaaRtvHeap.Shutdown();
 	m_device = nullptr;
 	m_presentQueue = nullptr;
 }
@@ -146,13 +181,50 @@ bool SwapChain::CreateRenderTargetViews()
 	}
 }
 
+bool SwapChain::CreateMsaaColorTarget()
+{
+	try
+	{
+		const D3D12_HEAP_PROPERTIES heapProps = DX::HeapProperties(D3D12_HEAP_TYPE_DEFAULT);
+		D3D12_RESOURCE_DESC desc = DX::Texture2DDesc(
+			kBackBufferFormat, m_width, m_height, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+		desc.SampleDesc.Count = m_sampleCount;
+		desc.SampleDesc.Quality = m_msaaQuality;
+
+		// 최적 클리어 값은 지정하지 않는다. 실행 중 클리어 색이 바뀔 수 있는데,
+		// 그 값과 다를 때 나는 경고는 D3D12Device::ConfigureInfoQueue에서 이미 걸러 두었다.
+		ThrowIfFailed(m_device->Get()->CreateCommittedResource(
+			&heapProps,
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			nullptr,
+			IID_PPV_ARGS(&m_msaaColorTarget)));
+
+		m_msaaColorTarget->SetName(L"MsaaColorTarget");
+
+		// 리소스가 이미 멀티샘플 텍스처이므로 설명자는 nullptr로 두면 자동으로 추론된다.
+		m_device->Get()->CreateRenderTargetView(
+			m_msaaColorTarget.Get(), nullptr, m_msaaRtvHeap.GetCpuHandle(m_msaaRtvIndex));
+		return true;
+	}
+	catch (const DxException& e)
+	{
+		LOG_ERROR(L"MSAA 색상 타겟 생성 실패: %s", e.ToString().c_str());
+		return false;
+	}
+}
+
 bool SwapChain::CreateDepthStencilBuffer()
 {
 	try
 	{
 		const D3D12_HEAP_PROPERTIES heapProps = DX::HeapProperties(D3D12_HEAP_TYPE_DEFAULT);
-		const D3D12_RESOURCE_DESC desc = DX::Texture2DDesc(
+		D3D12_RESOURCE_DESC desc = DX::Texture2DDesc(
 			kDepthStencilFormat, m_width, m_height, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+		// 깊이 버퍼는 색상 타겟과 반드시 같은 샘플 수를 가져야 한다. 다르면 디바이스 제거로 이어진다.
+		desc.SampleDesc.Count = m_sampleCount;
+		desc.SampleDesc.Quality = m_msaaQuality;
 
 		// 클리어 값을 미리 알려주면 드라이버가 클리어를 더 빠르게 처리한다.
 		// 실제 ClearDepthStencilView 값과 다르면 디버그 레이어가 경고를 낸다.
@@ -173,9 +245,19 @@ bool SwapChain::CreateDepthStencilBuffer()
 
 		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 		dsvDesc.Format = kDepthStencilFormat;
-		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 		dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
-		dsvDesc.Texture2D.MipSlice = 0;
+
+		// 멀티샘플 텍스처는 DSV 차원도 TEXTURE2DMS로 만들어야 한다.
+		// (이 경우 밉 슬라이스 개념이 없어 서브구조에 설정할 필드가 없다.)
+		if (m_sampleCount > 1)
+		{
+			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
+		}
+		else
+		{
+			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+			dsvDesc.Texture2D.MipSlice = 0;
+		}
 
 		m_device->Get()->CreateDepthStencilView(
 			m_depthStencilBuffer.Get(), &dsvDesc, m_dsvHeap.GetCpuHandle(m_dsvIndex));
@@ -209,6 +291,7 @@ void SwapChain::ReleaseSizeDependentResources()
 	{
 		m_backBuffers[i].Reset();
 	}
+	m_msaaColorTarget.Reset();
 	m_depthStencilBuffer.Reset();
 }
 
@@ -240,6 +323,10 @@ bool SwapChain::Resize(UINT width, UINT height)
 		m_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
 
 		if (!CreateRenderTargetViews())
+		{
+			return false;
+		}
+		if (m_sampleCount > 1 && !CreateMsaaColorTarget())
 		{
 			return false;
 		}
@@ -275,6 +362,11 @@ void SwapChain::Present(bool vsync)
 D3D12_CPU_DESCRIPTOR_HANDLE SwapChain::GetCurrentBackBufferView() const
 {
 	return m_rtvHeap.GetCpuHandle(m_rtvBaseIndex + m_currentBackBufferIndex);
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE SwapChain::GetColorTargetView() const
+{
+	return (m_sampleCount > 1) ? m_msaaRtvHeap.GetCpuHandle(m_msaaRtvIndex) : GetCurrentBackBufferView();
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE SwapChain::GetDepthStencilView() const
