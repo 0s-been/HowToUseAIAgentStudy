@@ -255,14 +255,19 @@ void Application::UpdateCamera(float deltaTime)
 		const float deltaX = m_input->GetMouseDeltaX();
 		const float deltaY = m_input->GetMouseDeltaY();
 
-		if (deltaX != 0.0f)
+		// 아주 빠른 마우스 동작은 픽셀 델타 자체가 커서, 감도를 곱한 뒤에도
+		// 한 프레임 회전량이 비정상적으로 커질 수 있다. 여기서 한 번 더 잘라 둔다.
+		const float yaw = std::clamp(deltaX * m_mouseSensitivity, -m_maxRotationPerFrame, m_maxRotationPerFrame);
+		const float pitch = std::clamp(deltaY * m_mouseSensitivity, -m_maxRotationPerFrame, m_maxRotationPerFrame);
+
+		if (yaw != 0.0f)
 		{
-			m_camera.AddYaw(deltaX * m_mouseSensitivity);
+			m_camera.AddYaw(yaw);
 		}
-		if (deltaY != 0.0f)
+		if (pitch != 0.0f)
 		{
 			// 마우스를 아래로 끌면 아래를 본다.
-			m_camera.AddPitch(deltaY * m_mouseSensitivity);
+			m_camera.AddPitch(pitch);
 		}
 	}
 

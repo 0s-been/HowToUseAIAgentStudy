@@ -68,23 +68,28 @@ void Timer::Tick()
 	}
 
 	::QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&m_currTime));
-	m_deltaTime = (m_currTime - m_prevTime) * m_secondsPerCount;
+	double rawDeltaTime = (m_currTime - m_prevTime) * m_secondsPerCount;
 	m_prevTime = m_currTime;
 
 	// 절전 모드 진입/복귀나 다른 코어로의 스레드 이동 때문에
 	// 음수가 나올 수 있다. 0으로 막아 둔다.
-	if (m_deltaTime < 0.0)
+	if (rawDeltaTime < 0.0)
 	{
-		m_deltaTime = 0.0;
+		rawDeltaTime = 0.0;
 	}
 
-	UpdateFrameStats();
+	// FPS 통계는 실제 델타를 그대로 써야 진짜 프레임률이 보인다.
+	UpdateFrameStats(rawDeltaTime);
+
+	// 반면 시뮬레이션(이동/회전 등)에 쓰이는 델타는 상한을 둔다.
+	// 그러지 않으면 hitch 직후 한 프레임 만에 오브젝트가 크게 점프한다.
+	m_deltaTime = std::min(rawDeltaTime, kMaxDeltaTime);
 }
 
-void Timer::UpdateFrameStats()
+void Timer::UpdateFrameStats(double rawDeltaTime)
 {
 	++m_frameCount;
-	m_elapsedForFps += m_deltaTime;
+	m_elapsedForFps += rawDeltaTime;
 
 	if (m_elapsedForFps >= 1.0)
 	{

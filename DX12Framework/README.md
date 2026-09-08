@@ -101,6 +101,37 @@ m_window->ProcessMessages();    // 이 사이에 ProcessMessage가 여러 번 �
 비례시킨다(이동량 자체가 이미 이번 프레임 값이라 `deltaTime`을 곱하면 감도가 프레임률에 따라
 달라진다).
 
+### 한 프레임에 너무 크게 움직이지 않도록 상한을 둔다
+
+`deltaTime`도 마우스 픽셀 델타도 값 자체에는 상한이 없다. 그래서 다음 두 상황에서
+카메라가 한 프레임 만에 비정상적으로 크게 움직일 수 있었다.
+
+- **hitch(짧은 멈춤) 직후** — 디버거 일시정지, 알트탭, 드라이버 지연 등으로 한 프레임이
+  아주 오래 걸리면 그다음 `Timer::Tick()`의 델타가 순간적으로 커진다. `Shift`로 이동
+  속도를 3배로 올린 상태였다면 그 큰 델타만큼 카메라가 한 번에 멀리 이동해 버린다.
+- **아주 빠른 마우스 동작** — 물리적으로 손목을 빨리 스냅하면 한 프레임에 들어오는 원시
+  마우스 픽셀 이동량 자체가 수백~수천에 달할 수 있다. 감도(`0.25도/픽셀`)를 곱해도
+  프레임당 회전량이 100도, 200도를 넘어갈 수 있다는 뜻이다.
+
+두 경우 모두 결과는 같다 — 연속된 두 프레임이 서로 거의 무관한 장면을 보여주게 되고,
+사람 눈이나 디스플레이는 그 큰 차이를 매끄러운 이동이 아니라 "화면이 번진다"로
+인지한다. MSAA나 체커 필터링은 **한 프레임 안**의 공간적 앨리어싱을 다루는 기법이라
+이런 **프레임 사이**의 큰 점프에는 애초에 관여하지 않는다.
+
+그래서 두 값 모두에 상한을 뒀다.
+
+```cpp
+// Core/Timer.h — 시뮬레이션에 쓰이는 델타는 100ms로 자른다. (FPS 통계는 원래 값을 그대로 쓴다)
+static constexpr double kMaxDeltaTime = 0.1;
+
+// Core/Application.h — 마우스 한 프레임 회전량은 45도로 자른다.
+float m_maxRotationPerFrame = DirectX::XMConvertToRadians(45.0f);
+```
+
+수치로 확인한 값: 감도를 곱하지 않은 원시 마우스 델타가 400픽셀/프레임이면 상한을 두기
+전에는 100도, 800픽셀이면 200도까지 회전했다(45도로 제한). 프레임 간격이 300ms로
+늘어나면(hitch) `Shift` 이동 거리가 상한 전 4.5단위였던 것이 1.5단위로 제한된다.
+
 ## 한 프레임의 흐름
 
 ```cpp
@@ -189,7 +220,7 @@ renderer.DrawMesh(*groundMesh, XMMatrixIdentity(), colorA, colorB, /*cellSize=*/
 |---|---|
 | 도형 추가 (구, 원기둥 등) | `GeometryGenerator`에 함수 하나 추가 → `MeshFactory::Create`로 등록 |
 | 텍스처 | `DescriptorHeap`을 `CBV_SRV_UAV` + `shaderVisible=true`로 생성하고, 루트 시그니처에 디스크립터 테이블과 정적 샘플러 추가 |
-| 이동 속도/감도 조정 | `Application`의 `m_cameraSpeed`, `m_mouseSensitivity` |
+| 이동 속도/감도 조정 | `Application`의 `m_cameraSpeed`, `m_mouseSensitivity`, `m_maxRotationPerFrame` |
 | 게임패드, 키 리매핑 | `InputReader`에 상태 추가 후 `Application::UpdateCamera`에서 질의 |
 | 오브젝트 여러 개 | `Application`이 오브젝트 목록을 들고 `DrawMesh`를 반복 호출 (프레임당 상한은 `kMaxObjectsPerFrame`) |
 | 반투명 렌더링 | 블렌딩을 켠 PSO를 하나 더 만들고 그리기 순서를 분리 |

@@ -69,6 +69,12 @@ private:
 	float m_cameraBoostMultiplier = 3.0f;
 	// 마우스 1픽셀당 회전 각도. 값이 클수록 시야가 빨리 돈다.
 	float m_mouseSensitivity = DirectX::XMConvertToRadians(0.25f);
+	// 마우스를 아주 빠르게(예: 물리적으로 휙 젓는 동작) 움직이면 한 프레임에 들어오는
+	// 원시 픽셀 이동량 자체가 매우 커질 수 있다. 그 값에 감도를 곱한 회전각을 여기서
+	// 한 번 더 잘라, 한 프레임 만에 시야가 100도 넘게 돌아가는 것을 막는다.
+	// (이게 없으면 아주 빠른 손목 스냅 한 번에 화면이 통째로 다른 장면으로 바뀌어
+	//  "번짐"처럼 보인다 - MSAA/체커 필터링과는 무관한, 프레임당 회전량 자체의 문제다.)
+	float m_maxRotationPerFrame = DirectX::XMConvertToRadians(45.0f);
 
 	std::wstring m_baseTitle;
 	float m_titleUpdateTimer = 0.0f;
